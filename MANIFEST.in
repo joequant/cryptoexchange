@@ -1,0 +1,4 @@
+include setup.py
+include *.in
+include cryptoexchange/*.py
+
