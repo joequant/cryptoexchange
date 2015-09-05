@@ -2,13 +2,13 @@
 import requests
 from time import sleep
 import json
-import constants
-import errors
+from . import constants
+from . import errors
 import uuid
 import logging
-from auth import AccessTokenAuth
-from auth import APIKeyAuthWithExpires
-from ws.ws_thread import BitMEXWebsocket
+from .auth import AccessTokenAuth
+from .auth import APIKeyAuthWithExpires
+from .ws.ws_thread import BitMEXWebsocket
 
 
 # https://www.bitmex.com/api/explorer/
@@ -93,7 +93,7 @@ class BitMEX(object):
         def wrapped(self, *args, **kwargs):
             if not (self.token or self.apiKey):
                 msg = "You must be authenticated to use this method"
-                raise errors.AuthenticationError, msg
+                raise errors.AuthenticationError(msg)
             else:
                 return function(self, *args, **kwargs)
         return wrapped
@@ -184,7 +184,7 @@ class BitMEX(object):
             # Make non-200s throw
             response.raise_for_status()
 
-        except requests.exceptions.HTTPError, e:
+        except requests.exceptions.HTTPError as e:
             # 401 - Auth error. Re-auth and re-run this request.
             if response.status_code == 401:
                 if self.token is None:
@@ -227,12 +227,12 @@ class BitMEX(object):
                 self.logger.error("Endpoint was: %s %s" % (verb, api))
                 exit(1)
 
-        except requests.exceptions.Timeout, e:
+        except requests.exceptions.Timeout as e:
             # Timeout, re-run this request
             self.logger.warning("Timed out, retrying...")
             return self._curl_bitmex(api, query, postdict, timeout, verb)
 
-        except requests.exceptions.ConnectionError, e:
+        except requests.exceptions.ConnectionError as e:
             self.logger.warning("Unable to contact the BitMEX API (ConnectionError). Please check the URL. Retrying. " +
                                 "Request: %s \n %s" % (url, json.dumps(postdict)))
             sleep(1)
