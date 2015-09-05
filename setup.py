@@ -18,7 +18,7 @@ setup(
     packages=['cryptoexchange',
               "cryptoexchange/auth",
               "cryptoexchange/ws"],
-    install_requires = [],
+    install_requires = ["websocket-client"],
     use_2to3 = True
 )
                                 
