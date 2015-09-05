@@ -15,7 +15,9 @@ setup(
     description="API's for bitcoin exchanges",
     long_description="""API's for cryptocurrency exchanges """,
     license="BSD",
-    packages=['cryptoexchange'],
+    packages=['cryptoexchange',
+              "cryptoexchange/auth",
+              "cryptoexchange/ws"],
     install_requires = [],
     use_2to3 = True
 )
