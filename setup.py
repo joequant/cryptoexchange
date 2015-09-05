@@ -8,7 +8,7 @@ from setuptools import (
 
 setup(
     name="cryptoexchange",
-    version = "0.0.1",
+    version = "0.0.2",
     author="Joseph C Wang",
     author_email='joequant@gmail.com',
     url="https://github.com/joequant/cryptoexchange",
