@@ -16,12 +16,11 @@ class BitMEX(object):
 
     """BitMEX API Connector."""
 
-    def __init__(self, base_url=None, symbol=None, login=None, password=None, otpToken=None,
+    def __init__(self, base_url=None, login=None, password=None, otpToken=None,
                  apiKey=None, apiSecret=None, orderIDPrefix='mm_bitmex_'):
         """Init connector."""
         self.logger = logging.getLogger('root')
         self.base_url = base_url
-        self.symbol = symbol
         self.token = None
         self.login = login
         self.password = password
@@ -36,44 +35,6 @@ class BitMEX(object):
         self.session = requests.Session()
         # These headers are always sent
         self.session.headers.update({'user-agent': 'liquidbot-' + constants.VERSION})
-
-        # Create websocket for streaming data
-        self.ws = BitMEXWebsocket(base_url, symbol)
-
-    #
-    # Public methods
-    #
-    def ticker_data(self):
-        """Get ticker data."""
-        return self.ws.get_ticker()
-
-    def get_instrument(self):
-        """Get an instrument's details."""
-        instrument = self.ws.get_instrument()
-
-        if instrument["state"] != "Open":
-            self.logger.error("The instrument %s is no longer open. State: %s" % (self.symbol, instrument["state"]))
-            exit(1)
-
-        return instrument
-
-    def market_depth(self):
-        """Get market depth / orderbook."""
-        return self.ws.market_depth()
-
-    def recent_trades(self):
-        """Get recent trades.
-
-        Returns
-        -------
-        A list of dicts:
-              {u'amount': 60,
-               u'date': 1306775375,
-               u'price': 8.7401099999999996,
-               u'tid': u'93842'},
-
-        """
-        return self.ws.recent_trades()
 
     #
     # Authentication required methods
@@ -120,7 +81,7 @@ class BitMEX(object):
         return self.place_order(-quantity, price)
 
     @authentication_required
-    def place_order(self, quantity, price):
+    def place_order(self, quantity, symbol, price):
         """Place an order."""
         if price < 0:
             raise Exception("Price must be positive.")
@@ -129,7 +90,7 @@ class BitMEX(object):
         # Generate a unique clOrdID with our prefix so we can identify it.
         clOrdID = self.orderIDPrefix + uuid.uuid4().bytes.encode('base64').rstrip('=\n')
         postdict = {
-            'symbol': self.symbol,
+            'symbol': symbol,
             'quantity': quantity,
             'price': price,
             'clOrdID': clOrdID
@@ -142,12 +103,12 @@ class BitMEX(object):
         return self.ws.open_orders(self.orderIDPrefix)
 
     @authentication_required
-    def http_open_orders(self):
+    def http_open_orders(self, symbol):
         """Get open orders via HTTP. Used on close to ensure we catch them all."""
         api = "order"
         orders = self._curl_bitmex(
             api=api,
-            query={'filter': json.dumps({'ordStatus.isTerminated': False, 'symbol': self.symbol})},
+            query={'filter': json.dumps({'ordStatus.isTerminated': False, 'symbol': symbol})},
             verb="GET"
         )
         # Only return orders that start with our clOrdID prefix.
