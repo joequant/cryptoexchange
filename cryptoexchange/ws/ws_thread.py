@@ -6,7 +6,7 @@ from time import sleep
 import json
 import string
 import logging
-import urlparse
+import urllib.parse
 import math
 from ..auth.APIKeyAuth import generate_nonce, generate_signature
 
@@ -63,7 +63,7 @@ class BitMEXWebsocket():
 
         # The instrument has a tickSize. Use it to round values.
         instrument = self.data['instrument'][0]
-        return {k: round(float(v or 0), instrument['tickLog']) for k, v in ticker.iteritems()}
+        return {k: round(float(v or 0), instrument['tickLog']) for k, v in list(ticker.items())}
 
     def funds(self):
         return self.data['margin'][0]
@@ -132,10 +132,10 @@ class BitMEXWebsocket():
     def __get_url(self):
         subscriptions = [sub + ':' + symbol for sub in ["order", "execution", "position", "quote", "trade"]]
         subscriptions += ["margin"]
-        urlParts = list(urlparse.urlparse(self.config['endpoint']))
+        urlParts = list(urllib.parse.urlparse(self.config['endpoint']))
         urlParts[0] = urlParts[0].replace('http', 'ws')
         urlParts[2] = "/realtime?subscribe=" + string.join(subscriptions, ",")
-        return urlparse.urlunparse(urlParts)
+        return urllib.parse.urlunparse(urlParts)
 
     def __push_account(self):
         '''Ask the websocket for an account push. Gets margin, positions, and open orders'''
