@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import sys
 import websocket
 import threading
@@ -8,7 +9,35 @@ import string
 import logging
 import urllib.parse
 import math
-from ..auth.APIKeyAuth import generate_nonce, generate_signature
+
+def generate_nonce():
+    return int(round(time.time() * 1000))
+
+# Generates an API signature.
+# A signature is HMAC_SHA256(secret, verb + path + nonce + data), hex encoded.
+# Verb must be uppercased, url is relative, nonce must be an increasing 64-bit integer
+# and the data, if present, must be JSON without whitespace between keys.
+#
+# For example, in psuedocode (and in real code below):
+#
+# verb=POST
+# url=/api/v1/order
+# nonce=1416993995705
+# data={"symbol":"XBTZ14","quantity":1,"price":395.01}
+# signature = HEX(HMAC_SHA256(secret, 'POST/api/v1/order1416993995705{"symbol":"XBTZ14","quantity":1,"price":395.01}'))
+def generate_signature(secret, verb, url, nonce, data):
+    """Generate a request signature compatible with BitMEX."""
+    # Parse the url so we can remove the base and extract just the path.
+    parsedURL = urlparse.urlparse(url)
+    path = parsedURL.path
+    if parsedURL.query:
+        path = path + '?' + parsedURL.query
+
+    # print "Computing HMAC: %s" % verb + path + str(nonce) + data
+    message = bytes(verb + path + str(nonce) + data).encode('utf-8')
+
+    signature = hmac.new(secret, message, digestmod=hashlib.sha256).hexdigest()
+    return signature
 
 
 # Naive implementation of connecting to BitMEX websocket for streaming realtime data.
@@ -21,16 +50,16 @@ from ..auth.APIKeyAuth import generate_nonce, generate_signature
 # poll really often if it wants.
 class BitMEXWebsocket():
 
-    def __init__(self, endpoint="", symbol="XBTN15", API_KEY=None, API_SECRET=None, LOGIN=None, PASSWORD=None):
+    def __init__(self, endpoint="", symbol="XBTU24H", API_KEY=None, API_SECRET=None, LOGIN=None, PASSWORD=None, **kwargs):
         '''Connect to the websocket and initialize data stores.'''
         self.logger = logging.getLogger('root')
         self.logger.debug("Initializing WebSocket.")
-
-        self.__reset(**kwargs)
+        self.endpoint = endpoint
+        self.__reset(kwargs)
 
         # We can subscribe right in the connection querystring, so let's build that.
         # Subscribe to all pertinent endpoints
-        wsURL = self.__getURL()
+        wsURL = self.__get_url(symbol)
         self.logger.info("Connecting to %s" % wsURL)
         self.__connect(wsURL, symbol)
         self.logger.info('Connected to WS.')
@@ -129,12 +158,12 @@ class BitMEXWebsocket():
                 "api-key:" + self.config['API_KEY']
             ]
 
-    def __get_url(self):
+    def __get_url(self, symbol):
         subscriptions = [sub + ':' + symbol for sub in ["order", "execution", "position", "quote", "trade"]]
         subscriptions += ["margin"]
-        urlParts = list(urllib.parse.urlparse(self.config['endpoint']))
+        urlParts = list(urllib.parse.urlparse(self.endpoint))
         urlParts[0] = urlParts[0].replace('http', 'ws')
-        urlParts[2] = "/realtime?subscribe=" + string.join(subscriptions, ",")
+        urlParts[2] = "/realtime?subscribe=" + ",".join(subscriptions)
         return urllib.parse.urlunparse(urlParts)
 
     def __push_account(self):
