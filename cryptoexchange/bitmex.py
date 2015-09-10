@@ -58,28 +58,6 @@ class BitMEX(object):
             else:
                 return function(self, *args, **kwargs)
         return wrapped
-
-    @authentication_required
-    def funds(self):
-        """Get your current balance."""
-        return self.ws.funds()
-
-    @authentication_required
-    def buy(self, quantity, price):
-        """Place a buy order.
-
-        Returns order object. ID: orderID
-        """
-        return self.place_order(quantity, price)
-
-    @authentication_required
-    def sell(self, quantity, price):
-        """Place a sell order.
-
-        Returns order object. ID: orderID
-        """
-        return self.place_order(-quantity, price)
-
     @authentication_required
     def place_order(self, quantity, symbol, price):
         """Place an order."""
@@ -98,17 +76,15 @@ class BitMEX(object):
         return self._curl_bitmex(api=endpoint, postdict=postdict, verb="POST")
 
     @authentication_required
-    def open_orders(self):
-        """Get open orders."""
-        return self.ws.open_orders(self.orderIDPrefix)
-
-    @authentication_required
-    def http_open_orders(self, symbol):
+    def open_orders(self, symbol=None):
         """Get open orders via HTTP. Used on close to ensure we catch them all."""
         api = "order"
+        query = {'ordStatus.isTerminated': False }
+        if symbol != None:
+            query['symbol'] =symbol
         orders = self._curl_bitmex(
             api=api,
-            query={'filter': json.dumps({'ordStatus.isTerminated': False, 'symbol': symbol})},
+            query={'filter': json.dumps(query)},
             verb="GET"
         )
         # Only return orders that start with our clOrdID prefix.
