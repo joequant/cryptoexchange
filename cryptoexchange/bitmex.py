@@ -51,10 +51,10 @@ class APIKeyAuthWithExpires(AuthBase):
         """
         # modify and return the request
         expires = int(round(time.time()) + 5) # 5s grace period in case of clock skew 
+#        r.headers['api-expires'] = str(expires)
         r.headers['api-expires'] = str(expires)
         r.headers['api-key'] = self.apiKey
         r.headers['api-signature'] = self.generate_signature(self.apiSecret, r.method, r.url, expires, r.body or '')
-
         return r
 
     # Generates an API signature.
@@ -77,11 +77,12 @@ class APIKeyAuthWithExpires(AuthBase):
         if parsedURL.query:
             path = path + '?' + parsedURL.query
 
+        print(verb, path, nonce, data)
         # print "Computing HMAC: %s" % verb + path + str(nonce) + data
-        message = bytes(verb + path + str(nonce) + data, 'utf-8')
-
-        signature = hmac.new(bytes(secret, 'utf-8'),
-                             message, digestmod=hashlib.sha256).hexdigest()
+        message = bytes(verb + path + str(nonce) + data, "utf-8")
+        signature = hmac.new(secret.encode("utf-8"),
+                             message,
+                             digestmod=hashlib.sha256).hexdigest()
         return signature
 
 
@@ -250,3 +251,21 @@ class BitMEX(object):
             return self._curl_bitmex(api, query, postdict, timeout, verb)
 
         return response.json()
+
+if __name__ == "__main__":
+    # create console handler and set level to debug
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+    ch = logging.StreamHandler()
+    # create formatter
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    # add formatter to ch
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
+    auth = APIKeyAuthWithExpires('LAqUlngMIQkIUjXMUreyu3qn',
+                                 'chNOOS4KvNXR_Xq4k4c9qsfoKWvnDecLATCRlcBwyKDYnWgO')
+    print (auth.generate_signature('chNOOS4KvNXR_Xq4k4c9qsfoKWvnDecLATCRlcBwyKDYnWgO',
+                                   'POST',
+                                   '/api/v1/order',
+                                   1429631577995,
+                                   '{"symbol":"XBTM15","price":219.0,"clOrdID":"mm_bitmex_1a/oemUeQ4CAJZgP3fjHsA","quantity":98}'))
