@@ -6,6 +6,7 @@ from time import sleep
 import json
 import uuid
 import logging
+import base64
 
 class AuthenticationError(Exception):
     pass
@@ -77,9 +78,10 @@ class APIKeyAuthWithExpires(AuthBase):
             path = path + '?' + parsedURL.query
 
         # print "Computing HMAC: %s" % verb + path + str(nonce) + data
-        message = bytes(verb + path + str(nonce) + data).encode('utf-8')
+        message = bytes(verb + path + str(nonce) + data, 'utf-8')
 
-        signature = hmac.new(secret, message, digestmod=hashlib.sha256).hexdigest()
+        signature = hmac.new(bytes(secret, 'utf-8'),
+                             message, digestmod=hashlib.sha256).hexdigest()
         return signature
 
 
@@ -138,7 +140,7 @@ class BitMEX(object):
 
         endpoint = "order"
         # Generate a unique clOrdID with our prefix so we can identify it.
-        clOrdID = self.orderIDPrefix + uuid.uuid4().bytes.encode('base64').rstrip('=\n')
+        clOrdID = self.orderIDPrefix + base64.b64encode(uuid.uuid4().bytes).decode('ascii').rstrip('=\n')
         postdict = {
             'symbol': symbol,
             'quantity': quantity,
