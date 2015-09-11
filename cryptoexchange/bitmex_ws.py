@@ -9,6 +9,9 @@ import string
 import logging
 import urllib.parse
 import math
+import time
+import hmac
+import hashlib
 
 def generate_nonce():
     return int(round(time.time() * 1000))
@@ -28,15 +31,17 @@ def generate_nonce():
 def generate_signature(secret, verb, url, nonce, data):
     """Generate a request signature compatible with BitMEX."""
     # Parse the url so we can remove the base and extract just the path.
-    parsedURL = urlparse.urlparse(url)
+    parsedURL = urllib.parse.urlparse(url)
     path = parsedURL.path
     if parsedURL.query:
         path = path + '?' + parsedURL.query
 
     # print "Computing HMAC: %s" % verb + path + str(nonce) + data
-    message = bytes(verb + path + str(nonce) + data).encode('utf-8')
+    message = bytes(verb + path + str(nonce) + data, 'utf-8')
 
-    signature = hmac.new(secret, message, digestmod=hashlib.sha256).hexdigest()
+    signature = hmac.new(secret.encode('utf-8'),
+                         message,
+                         digestmod=hashlib.sha256).hexdigest()
     return signature
 
 
@@ -50,12 +55,17 @@ def generate_signature(secret, verb, url, nonce, data):
 # poll really often if it wants.
 class BitMEXWebsocket():
 
-    def __init__(self, endpoint="", symbol="XBTU24H", API_KEY=None, API_SECRET=None, LOGIN=None, PASSWORD=None, **kwargs):
+    def __init__(self, endpoint="", symbol="XBU24H", API_KEY=None, API_SECRET=None, LOGIN=None, PASSWORD=None):
         '''Connect to the websocket and initialize data stores.'''
         self.logger = logging.getLogger('root')
         self.logger.debug("Initializing WebSocket.")
         self.endpoint = endpoint
-        self.__reset(kwargs)
+        self.api_key = API_KEY
+        self.api_secret = API_SECRET
+        self.login = LOGIN
+        self.password = PASSWORD
+        self.data = {}
+        self.keys = {}
 
         # We can subscribe right in the connection querystring, so let's build that.
         # Subscribe to all pertinent endpoints
@@ -137,15 +147,15 @@ class BitMEXWebsocket():
 
     def __get_auth(self):
         '''Return auth headers. Will use API Keys if present in settings.'''
-        if not self.config['API_KEY'] and not self.config['LOGIN']:
+        if self.api_key == None and self.login == None:
             self.logger.error("No authentication provided! Unable to connect.")
             sys.exit(1)
 
-        if not self.config['API_KEY']:
+        if self.api_key == None:
             self.logger.info("Authenticating with email/password.")
             return [
-                "email: " + self.config['LOGIN'],
-                "password: " + self.config['PASSWORD']
+                "email: " + self.login,
+                "password: " + self.password
             ]
         else:
             self.logger.info("Authenticating with API Key.")
@@ -154,8 +164,8 @@ class BitMEXWebsocket():
             nonce = generate_nonce()
             return [
                 "api-nonce: " + str(nonce),
-                "api-signature: " + generate_signature(self.config['API_SECRET'], 'GET', '/realtime', nonce, ''),
-                "api-key:" + self.config['API_KEY']
+                "api-signature: " + generate_signature(self.api_secret, 'GET', '/realtime', nonce, ''),
+                "api-key:" + self.api_key
             ]
 
     def __get_url(self, symbol):
@@ -246,12 +256,6 @@ class BitMEXWebsocket():
         self.logger.info('Websocket Closed')
         sys.exit(1)
 
-    def __reset(self, kwargs):
-        self.data = {}
-        self.keys = {}
-        self.config = kwargs
-
-
 def findItemByKeys(keys, table, matchData):
     for item in table:
         matched = True
@@ -271,6 +275,8 @@ if __name__ == "__main__":
     # add formatter to ch
     ch.setFormatter(formatter)
     logger.addHandler(ch)
-    ws = BitMEXWebsocket("https://testnet.bitmex.com/api/v1")
+    ws = BitMEXWebsocket("https://testnet.bitmex.com/api/v1",
+                         API_KEY="FOO",
+                         API_SECRET="BAR")
     while(ws.ws.sock.connected):
         sleep(1)
