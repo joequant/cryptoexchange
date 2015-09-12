@@ -3,6 +3,7 @@ from websocket import create_connection
 import json, base64, hashlib, urllib.parse, hmac, time
 import requests
 import os
+import uuid
 
 ###
 # websocket-apikey-auth-test.py
@@ -99,6 +100,19 @@ def test_with_message():
     session.headers.update({'user-agent': 'bitmex-robot'})
     url = BITMEX_URL + ENDPOINT + "/position"
     req = requests.Request(VERB, url, data=postdict, auth=auth, params=query)
+    prepped = session.prepare_request(req)
+    response = session.send(prepped, timeout=timeout)
+    print(url, response.text)
+
+    url = BITMEX_URL + ENDPOINT + "/order"
+    clOrdID = "test_" + \
+              base64.b64encode(uuid.uuid4().bytes).decode('ascii').rstrip('=\n')
+    postdict = {"symbol" : "XBT7D",
+                "quantity" : -10,
+                "price" : 241.0,
+                "clOrdID": clOrdID}
+    
+    req = requests.Request("POST", url, data=postdict, auth=auth, params=query)
     prepped = session.prepare_request(req)
     response = session.send(prepped, timeout=timeout)
     print(url, response.text)
