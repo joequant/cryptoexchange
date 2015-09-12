@@ -54,7 +54,8 @@ class APIKeyAuthWithExpires(AuthBase):
 #        r.headers['api-expires'] = str(expires)
         r.headers['api-expires'] = str(expires)
         r.headers['api-key'] = self.apiKey
-        r.headers['api-signature'] = self.generate_signature(self.apiSecret, r.method, r.url, expires, r.body or '')
+        data = r.body or ''
+        r.headers['api-signature'] = self.generate_signature(self.apiSecret, r.method, r.url, expires, data)
         return r
 
     # Generates an API signature.
@@ -76,15 +77,12 @@ class APIKeyAuthWithExpires(AuthBase):
         path = parsedURL.path
         if parsedURL.query:
             path = path + '?' + parsedURL.query
-
-        print(verb, path, nonce, data)
         # print "Computing HMAC: %s" % verb + path + str(nonce) + data
         message = bytes(verb + path + str(nonce) + data, "utf-8")
         signature = hmac.new(secret.encode("utf-8"),
                              message,
                              digestmod=hashlib.sha256).hexdigest()
         return signature
-
 
 # https://www.bitmex.com/api/explorer/
 class BitMEX(object):
@@ -133,6 +131,11 @@ class BitMEX(object):
             else:
                 return function(self, *args, **kwargs)
         return wrapped
+
+    @authentication_required
+    def position(self):
+        return self._curl_bitmex(api="position", verb="GET")
+
     @authentication_required
     def place_order(self, quantity, symbol, price):
         """Place an order."""
@@ -190,6 +193,7 @@ class BitMEX(object):
 
         # Make the request
         try:
+#            url = "http://httpbin.org/post"
             req = requests.Request(verb, url, data=postdict, auth=auth, params=query)
             prepped = self.session.prepare_request(req)
             response = self.session.send(prepped, timeout=timeout)
@@ -204,7 +208,6 @@ class BitMEX(object):
                     self.logger.error("Error: " + response.text)
                     if postdict:
                         self.logger.error(postdict)
-                    exit(1)
                 self.logger.warning("Token expired, reauthenticating...")
                 sleep(1)
                 self.authenticate()
@@ -217,8 +220,6 @@ class BitMEX(object):
                     return
                 self.logger.error("Unable to contact the BitMEX API (404). " +
                                   "Request: %s \n %s" % (url, json.dumps(postdict)))
-                exit(1)
-
             # 429, ratelimit
             elif response.status_code == 429:
                 self.logger.error("Ratelimited on current request. Sleeping, then trying again. Try fewer " +
@@ -235,10 +236,8 @@ class BitMEX(object):
                 return self._curl_bitmex(api, query, postdict, timeout, verb)
             # Unknown Error
             else:
-                self.logger.error("Unhandled Error: %s: %s %s" % (e, e.message, json.dumps(response.json(), indent=4)))
+                self.logger.error("Unhandled Error: %s: %s %s" % (e, response.text, json.dumps(response.json(), indent=4)))
                 self.logger.error("Endpoint was: %s %s" % (verb, api))
-                exit(1)
-
         except requests.exceptions.Timeout as e:
             # Timeout, re-run this request
             self.logger.warning("Timed out, retrying...")

@@ -15,8 +15,7 @@ setup(
     description="API's for bitcoin exchanges",
     long_description="""API's for cryptocurrency exchanges """,
     license="BSD",
-    packages=['cryptoexchange'],
-    scripts = ['cryptoexchange/util/generate-api-key.py'],
+    packages=['cryptoexchange', 'cryptoexchange/util'],
     install_requires = ["websocket-client"],
     use_2to3 = True
 )
