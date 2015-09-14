@@ -165,6 +165,7 @@ class BitMEX(object):
             query={'filter': json.dumps(query)},
             verb="GET"
         )
+        return orders
 #        # Only return orders that start with our clOrdID prefix.
 #        return [o for o in orders if str(o['clOrdID']).startswith(self.orderIDPrefix)]
 
