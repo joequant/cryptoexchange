@@ -165,8 +165,8 @@ class BitMEX(object):
             query={'filter': json.dumps(query)},
             verb="GET"
         )
-        # Only return orders that start with our clOrdID prefix.
-        return [o for o in orders if str(o['clOrdID']).startswith(self.orderIDPrefix)]
+#        # Only return orders that start with our clOrdID prefix.
+#        return [o for o in orders if str(o['clOrdID']).startswith(self.orderIDPrefix)]
 
     @authentication_required
     def cancel(self, orderID):

@@ -15,6 +15,7 @@ import hashlib
 import hmac
 import http.client
 import json
+import os
 
 def get_796_token(appid,apikey,secretkey):
     timestamp = time.time()#"1414142919" #time.time()
@@ -86,12 +87,16 @@ def testHMacSHA(secretkey,message):
     print("hex=",s)
 
 if __name__ == "__main__":
+    app_id = os.environ.get("APP_ID_796", None)
+    api_key = os.environ.get("API_KEY_796", None)
+    api_secret = os.environ.get("API_SECRET_796", None)
     testHMacSHA(b"HF94bR940e1d9YZwfgickG5HR07SFJQGscgO+E3vFPQGwSzyGtUQLxIh6blv",
         "apikey=5999a1ce-4312-8a3c-75a5-327c-f5cf5251&appid=11040&secretkey=HF94bR940e1d9YZwfgickG5HR07SFJQGscgO%2BE3vFPQGwSzyGtUQLxIh6blv&timestamp=1414142919")
 
-    access_token = get_796_token(appid = '##YOUR APPID##',apikey='##YOUR APIKEY##',secretkey='##YOUR SECRETKEY##')
+    access_token = get_796_token(appid = app_id,
+                                 apikey=api_key,
+                                 secretkey=api_secret)
     print("access_token=",access_token)
-
     getUserInfo(access_token)
     getUserInfo1(access_token)
     getUserInfo2(access_token)
