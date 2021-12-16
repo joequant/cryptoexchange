@@ -16,7 +16,6 @@ setup(
     long_description="""API's for cryptocurrency exchanges """,
     license="BSD",
     packages=['cryptoexchange', 'cryptoexchange/util'],
-    install_requires = ["websocket-client", "bitcoin-price-api"],
-    use_2to3 = True
+    install_requires = ["websocket-client", "bitcoin-price-api"]
 )
                                 
